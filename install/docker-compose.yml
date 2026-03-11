@@ -75,7 +75,7 @@ services:
             '        /opt/odoo/odoo-bin \' \
             '            --db_host=db --db_port=5432 --db_user=coffeetree --db_password=coffeetree \' \
             '            -d coffeetree --init=base --without-demo=False \' \
-            '            --addons-path=/opt/odoo/addons,/mnt/custom_addons \' \
+            '            --addons-path=/opt/odoo/addons,/opt/odoo/custom_addons \' \
             '            --data-dir=/var/lib/odoo --stop-after-init' \
             '        echo "Demo data initialized!"' \
             '    fi' \
@@ -85,7 +85,7 @@ services:
             'exec /opt/odoo/odoo-bin \' \
             '    --db_host=db --db_port=5432 --db_user=coffeetree --db_password=coffeetree \' \
             '    -d coffeetree \' \
-            '    --addons-path=/opt/odoo/addons,/mnt/custom_addons \' \
+            '    --addons-path=/opt/odoo/addons,/opt/odoo/custom_addons \' \
             '    --data-dir=/var/lib/odoo' \
             > /entrypoint.sh && chmod +x /entrypoint.sh
 
