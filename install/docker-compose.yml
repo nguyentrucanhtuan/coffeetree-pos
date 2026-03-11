@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:16
-    container_name: coffeetree-db
+    container_name: coffeetree-pos-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: postgres
@@ -84,7 +84,7 @@ services:
         EXPOSE 8069 8072
         ENTRYPOINT ["/entrypoint.sh"]
 
-    container_name: coffeetree-odoo
+    container_name: coffeetree-pos
     restart: unless-stopped
     depends_on:
       db:
