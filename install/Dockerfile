@@ -69,7 +69,7 @@ EXPOSE 8069 8072
 CMD ["/opt/odoo/odoo-bin", \
      "--db_host=db", \
      "--db_port=5432", \
-     "--db_user=odoo", \
-     "--db_password=odoo", \
+     "--db_user=coffeetree", \
+     "--db_password=coffeetree", \
      "--addons-path=/opt/odoo/addons,/mnt/custom_addons", \
      "--data-dir=/var/lib/odoo"]
