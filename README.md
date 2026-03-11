@@ -13,7 +13,7 @@ Hệ thống Point of Sale tùy chỉnh của coffeetree.vn
 curl -fsSL https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install/docker-compose.yml | docker compose -f - up --build -d
 ```
 
-> Lần đầu mất ~15 phút (clone Odoo + cài packages + tạo DB + load demo data). Sau đó mở **http://localhost:8069** — đăng nhập `admin` / `admin`.
+> Cài đặt lần đầu mất ~15 phút. Sau đó mở **http://localhost:8069** — đăng nhập `admin` / `admin`.
 
 ### Hoặc dùng script tự động (cài Docker nếu chưa có)
 
