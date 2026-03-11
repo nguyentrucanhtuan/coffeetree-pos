@@ -2,7 +2,7 @@
 chcp 65001 >nul
 setlocal
 
-set REPO=https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0
+set REPO=https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install
 set DIR=coffeetree-pos
 
 echo ==============================

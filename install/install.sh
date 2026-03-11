@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REPO="https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0"
+REPO="https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install"
 DIR="coffeetree-pos"
 
 echo "=============================="

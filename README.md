@@ -10,7 +10,7 @@ Hệ thống Point of Sale tùy chỉnh trên nền Odoo 19, dành cho CoffeeTre
 ### 1 lệnh duy nhất
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/docker-compose.yml | docker compose -f - up --build -d
+curl -fsSL https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install/docker-compose.yml | docker compose -f - up --build -d
 ```
 
 > Lần đầu mất ~15 phút (clone Odoo + cài packages + tạo DB + load demo data). Sau đó mở **http://localhost:8069** — đăng nhập `admin` / `admin`.
@@ -19,11 +19,11 @@ curl -fsSL https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19
 
 **Linux/Mac:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install/install.sh | bash
 ```
 
 **Windows** — tải và double-click:
-[install.bat](https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install.bat)
+[install.bat](https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install/install.bat)
 
 ---
 
