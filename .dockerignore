@@ -1,0 +1,16 @@
+.git
+.github
+.idea
+.vscode
+doc
+debian
+*.pyc
+*.pyo
+__pycache__
+*.log
+*.swp
+*.swo
+.DS_Store
+custom_addons
+conf
+odoo-data

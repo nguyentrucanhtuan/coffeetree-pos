@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:16
+    container_name: coffeetree-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-odoo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-odoo}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - odoo-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-odoo}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  odoo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: coffeetree-odoo
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8069:8069"
+      - "8072:8072"
+    volumes:
+      - odoo-data:/var/lib/odoo
+      - ./conf:/mnt/conf:ro
+      - ./custom_addons:/mnt/custom_addons
+    networks:
+      - odoo-net
+    environment:
+      - HOST=db
+      - PORT=5432
+      - USER=${POSTGRES_USER:-odoo}
+      - PASSWORD=${POSTGRES_PASSWORD:-odoo}
+      - ADMIN_PASSWD=${ODOO_ADMIN_PASSWD:-admin}
+
+volumes:
+  db-data:
+    driver: local
+  odoo-data:
+    driver: local
+
+networks:
+  odoo-net:
+    driver: bridge
