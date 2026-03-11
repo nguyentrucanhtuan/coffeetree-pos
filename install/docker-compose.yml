@@ -5,19 +5,19 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: postgres
-      POSTGRES_USER: odoo
-      POSTGRES_PASSWORD: odoo
+      POSTGRES_USER: coffeetree
+      POSTGRES_PASSWORD: coffeetree
     volumes:
       - db-data:/var/lib/postgresql/data
     networks:
-      - odoo-net
+      - coffeetree-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      test: ["CMD-SHELL", "pg_isready -U coffeetree"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  odoo:
+  web:
     build:
       context: .
       dockerfile_inline: |
@@ -46,39 +46,39 @@ services:
 
         # Clone source từ GitHub
         RUN git clone https://github.com/nguyentrucanhtuan/coffeetree-pos.git \
-            --branch 19.0 --depth 1 /opt/odoo
+            --branch 19.0 --depth 1 /opt/coffeetree-pos
 
         # Cài Python packages
         RUN pip install --no-cache-dir --upgrade pip \
-            && pip install --no-cache-dir -r /opt/odoo/requirements.txt
+            && pip install --no-cache-dir -r /opt/coffeetree-pos/requirements.txt
 
-        RUN mkdir -p /var/lib/odoo /mnt/custom_addons
+        RUN mkdir -p /var/lib/coffeetree /mnt/custom_addons
 
         # Entrypoint: tự tạo DB + load demo data lần đầu chạy
         RUN printf '%s\n' \
             '#!/bin/bash' \
             'set -e' \
             'echo "Waiting for database..."' \
-            'until pg_isready -h db -U odoo -q; do sleep 2; done' \
+            'until pg_isready -h db -U coffeetree -q; do sleep 2; done' \
             'echo "Database ready."' \
             '' \
-            'DB=$(psql postgresql://odoo:odoo@db:5432/postgres -tAc "SELECT 1 FROM pg_database WHERE datname='"'"'coffeetree'"'"'" 2>/dev/null || echo "")' \
+            'DB=$(psql postgresql://coffeetree:coffeetree@db:5432/postgres -tAc "SELECT 1 FROM pg_database WHERE datname='"'"'coffeetree'"'"'" 2>/dev/null || echo "")' \
             'if [ "$DB" != "1" ]; then' \
             '    echo "First run: creating database with demo data (~5 min)..."' \
-            '    /opt/odoo/odoo-bin \' \
-            '        --db_host=db --db_port=5432 --db_user=odoo --db_password=odoo \' \
+            '    /opt/coffeetree-pos/odoo-bin \' \
+            '        --db_host=db --db_port=5432 --db_user=coffeetree --db_password=coffeetree \' \
             '        -d coffeetree --init=base --without-demo=False \' \
-            '        --addons-path=/opt/odoo/addons,/mnt/custom_addons \' \
-            '        --data-dir=/var/lib/odoo --stop-after-init' \
+            '        --addons-path=/opt/coffeetree-pos/addons,/mnt/custom_addons \' \
+            '        --data-dir=/var/lib/coffeetree --stop-after-init' \
             '    echo "Database initialized with demo data!"' \
             'fi' \
             '' \
-            'echo "Starting Odoo at http://localhost:8069 ..."' \
-            'exec /opt/odoo/odoo-bin \' \
-            '    --db_host=db --db_port=5432 --db_user=odoo --db_password=odoo \' \
+            'echo "Starting CoffeeTree POS at http://localhost:8069 ..."' \
+            'exec /opt/coffeetree-pos/odoo-bin \' \
+            '    --db_host=db --db_port=5432 --db_user=coffeetree --db_password=coffeetree \' \
             '    -d coffeetree \' \
-            '    --addons-path=/opt/odoo/addons,/mnt/custom_addons \' \
-            '    --data-dir=/var/lib/odoo' \
+            '    --addons-path=/opt/coffeetree-pos/addons,/mnt/custom_addons \' \
+            '    --data-dir=/var/lib/coffeetree' \
             > /entrypoint.sh && chmod +x /entrypoint.sh
 
         EXPOSE 8069 8072
@@ -93,14 +93,14 @@ services:
       - "8069:8069"
       - "8072:8072"
     volumes:
-      - odoo-data:/var/lib/odoo
+      - coffeetree-data:/var/lib/coffeetree
     networks:
-      - odoo-net
+      - coffeetree-net
 
 volumes:
   db-data:
-  odoo-data:
+  coffeetree-data:
 
 networks:
-  odoo-net:
+  coffeetree-net:
     driver: bridge
