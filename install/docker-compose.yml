@@ -44,15 +44,14 @@ services:
 
         RUN npm install -g rtlcss
 
-        # Clone source từ GitHub
+        # Clone source từ GitHub (dùng đường dẫn mặc định /opt/odoo để tương thích với các bản upgrade)
         RUN git clone https://github.com/nguyentrucanhtuan/coffeetree-pos.git \
-            --branch 19.0 --depth 1 /opt/coffeetree-pos
+            --branch 19.0 --depth 1 /opt/odoo
 
-        # Cài Python packages
         RUN pip install --no-cache-dir --upgrade pip \
-            && pip install --no-cache-dir -r /opt/coffeetree-pos/requirements.txt
+            && pip install --no-cache-dir -r /opt/odoo/requirements.txt
 
-        RUN mkdir -p /var/lib/coffeetree /mnt/custom_addons
+        RUN mkdir -p /var/lib/odoo /mnt/custom_addons
 
         # Entrypoint: tự tạo DB + load demo data lần đầu chạy
         RUN printf '%s\n' \
@@ -65,20 +64,20 @@ services:
             'DB=$(psql postgresql://coffeetree:coffeetree@db:5432/postgres -tAc "SELECT 1 FROM pg_database WHERE datname='"'"'coffeetree'"'"'" 2>/dev/null || echo "")' \
             'if [ "$DB" != "1" ]; then' \
             '    echo "First run: creating database with demo data (~5 min)..."' \
-            '    /opt/coffeetree-pos/odoo-bin \' \
+            '    /opt/odoo/odoo-bin \' \
             '        --db_host=db --db_port=5432 --db_user=coffeetree --db_password=coffeetree \' \
             '        -d coffeetree --init=base --without-demo=False \' \
-            '        --addons-path=/opt/coffeetree-pos/addons,/mnt/custom_addons \' \
-            '        --data-dir=/var/lib/coffeetree --stop-after-init' \
+            '        --addons-path=/opt/odoo/addons,/mnt/custom_addons \' \
+            '        --data-dir=/var/lib/odoo --stop-after-init' \
             '    echo "Database initialized with demo data!"' \
             'fi' \
             '' \
             'echo "Starting CoffeeTree POS at http://localhost:8069 ..."' \
-            'exec /opt/coffeetree-pos/odoo-bin \' \
+            'exec /opt/odoo/odoo-bin \' \
             '    --db_host=db --db_port=5432 --db_user=coffeetree --db_password=coffeetree \' \
             '    -d coffeetree \' \
-            '    --addons-path=/opt/coffeetree-pos/addons,/mnt/custom_addons \' \
-            '    --data-dir=/var/lib/coffeetree' \
+            '    --addons-path=/opt/odoo/addons,/mnt/custom_addons \' \
+            '    --data-dir=/var/lib/odoo' \
             > /entrypoint.sh && chmod +x /entrypoint.sh
 
         EXPOSE 8069 8072
@@ -93,13 +92,13 @@ services:
       - "8069:8069"
       - "8072:8072"
     volumes:
-      - coffeetree-data:/var/lib/coffeetree
+      - odoo-data:/var/lib/odoo
     networks:
       - coffeetree-net
 
 volumes:
   db-data:
-  coffeetree-data:
+  odoo-data:
 
 networks:
   coffeetree-net:
