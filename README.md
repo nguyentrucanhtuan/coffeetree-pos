@@ -9,29 +9,25 @@ Hệ thống Point of Sale tùy chỉnh trên nền Odoo 19, dành cho CoffeeTre
 
 ### Các bước
 
-**1. Clone repo**
+**1. Tạo thư mục và tải 2 file về**
 ```bash
-git clone https://github.com/nguyentrucanhtuan/coffeetree-pos.git --depth 1
-cd coffeetree-pos
+mkdir coffeetree && cd coffeetree
+
+curl -O https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/Dockerfile
+curl -O https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/docker-compose.yml
 ```
 
-**2. Tạo file cấu hình**
+**2. Tạo thư mục custom addons** (tùy chọn)
 ```bash
-# Copy template env
-cp .env.example .env
-
-# Tạo odoo.conf từ template
-cp conf/odoo.conf.example conf/odoo.conf
+mkdir custom_addons
 ```
 
-**3. Chỉnh sửa mật khẩu** (mở `.env` và `conf/odoo.conf`, đổi các giá trị mặc định)
-
-**4. Build & khởi động (All-in-One)**
+**3. Build & chạy (All-in-One)**
 ```bash
 docker compose up --build -d
 ```
 
-> Lần đầu build mất khoảng 10–15 phút. Các lần sau chỉ cần `docker compose up -d`.
+> Lần đầu build mất khoảng 10–15 phút (clone Odoo + cài packages). Các lần sau chỉ cần `docker compose up -d`.
 
 **5. Truy cập**
 - Odoo: [http://localhost:8069](http://localhost:8069)

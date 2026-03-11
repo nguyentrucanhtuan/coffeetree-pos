@@ -1,41 +1,19 @@
 FROM python:3.12-slim
 
-SHELL ["/bin/bash", "-xo", "pipefail", "-c"]
-
-# Generate locale
 ENV LANG=C.UTF-8
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git \
         ca-certificates \
         curl \
-        dirmngr \
-        fonts-noto-cjk \
+        wget \
         gnupg \
-        libssl-dev \
-        node-less \
         npm \
-        python3-magic \
-        python3-num2words \
-        python3-odf \
-        python3-pdfminer \
-        python3-pip \
-        python3-phonenumbers \
-        python3-pyldap \
-        python3-qrcode \
-        python3-renderpm \
-        python3-setuptools \
-        python3-slugify \
-        python3-vobject \
-        python3-watchdog \
-        python3-xlrd \
-        python3-xlwt \
-        xz-utils \
-        # PostgreSQL client
+        node-less \
         libpq-dev \
         postgresql-client \
-        # Build tools
         gcc \
         g++ \
         libxml2-dev \
@@ -44,7 +22,8 @@ RUN apt-get update && \
         libffi-dev \
         libldap2-dev \
         libsasl2-dev \
-        # wkhtmltopdf dependencies
+        libssl-dev \
+        fonts-noto-cjk \
         libnss3 \
         libatk1.0-0 \
         libatk-bridge2.0-0 \
@@ -57,42 +36,40 @@ RUN apt-get update && \
         libxrandr2 \
         libgbm1 \
         libasound2 \
-        wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Install wkhtmltopdf (for PDF reports)
+# Install wkhtmltopdf (PDF reports)
 RUN wget -q https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
     && dpkg -i wkhtmltox_0.12.6.1-3.bookworm_amd64.deb || apt-get install -fy \
-    && rm wkhtmltox_0.12.6.1-3.bookworm_amd64.deb
+    && rm wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install rtlcss (for RTL language support)
+# Install rtlcss
 RUN npm install -g rtlcss
 
-# Create odoo user
-RUN useradd -m -d /home/odoo -s /bin/bash odoo
-
-# Set working directory
-WORKDIR /opt/odoo
-
-# Copy source code
-COPY --chown=odoo:odoo . /opt/odoo
+# Clone Odoo source từ repo của bạn
+RUN git clone https://github.com/nguyentrucanhtuan/coffeetree-pos.git \
+        --branch 19.0 \
+        --depth 1 \
+        /opt/odoo
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r /opt/odoo/requirements.txt
 
-# Create necessary directories
-RUN mkdir -p /var/lib/odoo /mnt/custom_addons /mnt/conf \
-    && chown -R odoo:odoo /var/lib/odoo /mnt/custom_addons /mnt/conf
+# Create necessary directories & odoo user
+RUN useradd -m -d /home/odoo -s /bin/bash odoo \
+    && mkdir -p /var/lib/odoo /mnt/custom_addons \
+    && chown -R odoo:odoo /opt/odoo /var/lib/odoo /mnt/custom_addons
 
-# Switch to odoo user
 USER odoo
 
-# Expose ports
 EXPOSE 8069 8072
 
-# Default config file
-ENV ODOO_RC=/mnt/conf/odoo.conf
-
-# Entrypoint
-CMD ["/opt/odoo/odoo-bin", "--config=/mnt/conf/odoo.conf"]
+CMD ["/opt/odoo/odoo-bin", \
+     "--db_host=db", \
+     "--db_port=5432", \
+     "--db_user=odoo", \
+     "--db_password=odoo", \
+     "--addons-path=/opt/odoo/addons,/mnt/custom_addons", \
+     "--data-dir=/var/lib/odoo"]
