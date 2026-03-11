@@ -27,7 +27,7 @@ services:
 
         # Cài hệ thống dependencies
         RUN apt-get update && apt-get install -y --no-install-recommends \
-            git curl wget gnupg npm node-less unzip \
+            git curl wget gnupg npm node-less \
             libpq-dev postgresql-client \
             gcc g++ libxml2-dev libxslt1-dev libjpeg-dev \
             libffi-dev libldap2-dev libsasl2-dev libssl-dev \
@@ -53,7 +53,7 @@ services:
 
         RUN mkdir -p /var/lib/odoo /mnt/custom_addons
 
-        # Entrypoint: restore từ first-data.zip hoặc fallback init demo data
+        # Entrypoint: restore từ first-data.sql hoặc fallback init demo data
         RUN printf '%s\n' \
             '#!/bin/bash' \
             'set -e' \
@@ -63,22 +63,15 @@ services:
             '' \
             'DB=$(psql postgresql://coffeetree:coffeetree@db:5432/postgres -tAc "SELECT 1 FROM pg_database WHERE datname='"'"'coffeetree'"'"'" 2>/dev/null || echo "")' \
             'if [ "$DB" != "1" ]; then' \
-            '    ZIP_URL="https://github.com/nguyentrucanhtuan/coffeetree-pos/raw/19.0/install/first-data.zip"' \
-            '    HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$ZIP_URL")' \
+            '    SQL_URL="https://github.com/nguyentrucanhtuan/coffeetree-pos/raw/19.0/install/first-data.sql"' \
+            '    HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$SQL_URL")' \
             '    if [ "$HTTP_STATUS" = "200" ]; then' \
-            '        echo "Found first-data.zip — restoring..."' \
-            '        mkdir -p /tmp/restore' \
-            '        curl -fsSL "$ZIP_URL" -o /tmp/restore/first-data.zip' \
-            '        unzip -q /tmp/restore/first-data.zip -d /tmp/restore/' \
+            '        echo "Found first-data.sql — restoring database..."' \
             '        psql postgresql://coffeetree:coffeetree@db:5432/postgres -c "CREATE DATABASE coffeetree OWNER coffeetree;" 2>/dev/null || true' \
-            '        psql postgresql://coffeetree:coffeetree@db:5432/coffeetree < /tmp/restore/dump.sql' \
-            '        if [ -d /tmp/restore/filestore ]; then' \
-            '            cp -r /tmp/restore/filestore /var/lib/odoo/' \
-            '        fi' \
-            '        rm -rf /tmp/restore' \
-            '        echo "Restore complete!"' \
+            '        curl -fsSL "$SQL_URL" | psql postgresql://coffeetree:coffeetree@db:5432/coffeetree' \
+            '        echo "Database restored!"' \
             '    else' \
-            '        echo "No first-data.zip — initializing with demo data..."' \
+            '        echo "No first-data.sql — initializing with demo data..."' \
             '        /opt/odoo/odoo-bin \' \
             '            --db_host=db --db_port=5432 --db_user=coffeetree --db_password=coffeetree \' \
             '            -d coffeetree --init=base --without-demo=False \' \
