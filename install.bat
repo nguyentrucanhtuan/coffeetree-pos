@@ -9,35 +9,41 @@ echo ==============================
 echo   CoffeeTree POS - Installer
 echo ==============================
 
-:: Kiểm tra Docker
+:: ── Kiểm tra Docker ────────────────────────────────────────────────
 docker --version >nul 2>&1
 if errorlevel 1 (
-    echo ❌ Docker chua duoc cai. Tai tai: https://www.docker.com/products/docker-desktop
+    echo Docker chua duoc cai. Dang mo trang tai Docker Desktop...
+    start https://www.docker.com/products/docker-desktop
+    echo Sau khi cai Docker Desktop xong, chay lai file nay.
     pause
     exit /b 1
 )
 
-echo ✅ Docker da duoc cai.
+echo Docker da san sang.
 
-:: Tạo thư mục
-if not exist "%DIR%\custom_addons" mkdir "%DIR%\custom_addons"
+:: ── Tải docker-compose.yml ─────────────────────────────────────────
+if not exist "%DIR%" mkdir "%DIR%"
 cd "%DIR%"
-
-:: Tải file cấu hình
-echo 📥 Dang tai file cau hinh...
-curl -fsSL "%REPO%/Dockerfile" -o Dockerfile
+echo Dang tai cau hinh...
 curl -fsSL "%REPO%/docker-compose.yml" -o docker-compose.yml
 
-echo 🔨 Dang build va khoi dong (lan dau ~15 phut)...
+:: ── Build & chạy ───────────────────────────────────────────────────
+echo Build va khoi dong (lan dau ~15 phut)...
 docker compose up --build -d
 
+:: ── Chờ Odoo sẵn sàng ─────────────────────────────────────────────
+echo Cho Odoo khoi dong...
+:wait_loop
+timeout /t 5 >nul
+curl -sf http://localhost:8069/web/health >nul 2>&1
+if errorlevel 1 goto wait_loop
+
+:: ── Mở trình duyệt ────────────────────────────────────────────────
 echo.
 echo ==============================
-echo   ✅ Hoan tat! Mo trinh duyet:
-echo      http://localhost:8069
+echo   Odoo da san sang!
+echo   http://localhost:8069
+echo   Tai khoan: admin / admin
 echo ==============================
-
-timeout /t 3 >nul
 start http://localhost:8069
-
 pause
