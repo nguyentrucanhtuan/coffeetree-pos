@@ -7,31 +7,23 @@ Hệ thống Point of Sale tùy chỉnh trên nền Odoo 19, dành cho CoffeeTre
 ### Yêu cầu
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) đã được cài đặt và đang chạy
 
-### Các bước
+### 1 lệnh duy nhất
 
-**1. Tạo thư mục và tải 2 file về**
 ```bash
-mkdir coffeetree && cd coffeetree
-
-curl -O https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/Dockerfile
-curl -O https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/docker-compose.yml | docker compose -f - up --build -d
 ```
 
-**2. Tạo thư mục custom addons** (tùy chọn)
+> Lần đầu mất ~15 phút (clone Odoo + cài packages + tạo DB + load demo data). Sau đó mở **http://localhost:8069** — đăng nhập `admin` / `admin`.
+
+### Hoặc dùng script tự động (cài Docker nếu chưa có)
+
+**Linux/Mac:**
 ```bash
-mkdir custom_addons
+curl -fsSL https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install.sh | bash
 ```
 
-**3. Build & chạy (All-in-One)**
-```bash
-docker compose up --build -d
-```
-
-> Lần đầu build mất khoảng 10–15 phút (clone Odoo + cài packages). Các lần sau chỉ cần `docker compose up -d`.
-
-**5. Truy cập**
-- Odoo: [http://localhost:8069](http://localhost:8069)
-- Tạo database mới, đăng nhập và bắt đầu sử dụng!
+**Windows** — tải và double-click:
+[install.bat](https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install.bat)
 
 ---
 
