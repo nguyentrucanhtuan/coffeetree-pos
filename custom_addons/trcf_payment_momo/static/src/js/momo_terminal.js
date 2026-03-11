@@ -1,0 +1,493 @@
+/** @odoo-module **/
+/**
+ * MoMo Payment Terminal Integration for Odoo 19 POS
+ * 
+ * This module provides:
+ * 1. Dynamic QR code generation via MoMo API
+ * 2. Real-time payment confirmation via webhook + Odoo bus
+ * 3. Automatic order validation after successful payment
+ * 
+ * Flow:
+ * - User selects MoMo payment → API creates payment request → QR displayed
+ * - Customer scans QR with MoMo app → Pays → MoMo calls webhook
+ * - Webhook updates transaction → Sends bus notification → POS receives
+ * - Payment marked done → Order auto-validated → Receipt printed
+ */
+
+import { PaymentInterface } from "@point_of_sale/app/utils/payment/payment_interface";
+import { register_payment_method } from "@point_of_sale/app/services/pos_store";
+import { patch } from "@web/core/utils/patch";
+import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
+import { useState, onWillUnmount } from "@odoo/owl";
+import { getOnNotified } from "@point_of_sale/utils";
+
+// ============================================================================
+// Constants: QR Code Placeholder SVGs
+// ============================================================================
+
+/** Default placeholder when no QR is available */
+const DEFAULT_MOMO_QR_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <rect fill="#fff" width="200" height="200" rx="10"/>
+  <rect fill="#a50064" x="10" y="10" width="180" height="180" rx="8"/>
+  <text x="100" y="85" text-anchor="middle" font-size="22" fill="#fff" font-family="Arial, sans-serif" font-weight="bold">MoMo</text>
+  <text x="100" y="110" text-anchor="middle" font-size="12" fill="#fff" font-family="Arial, sans-serif">Scan QR</text>
+  <text x="100" y="130" text-anchor="middle" font-size="10" fill="#ffcce6" font-family="Arial, sans-serif">Upload QR in Settings</text>
+</svg>`;
+const DEFAULT_MOMO_QR = "data:image/svg+xml," + encodeURIComponent(DEFAULT_MOMO_QR_SVG.trim());
+
+/** Loading spinner while MoMo API is being called */
+const LOADING_QR_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <rect fill="#fff" width="200" height="200" rx="10"/>
+  <rect fill="#a50064" x="10" y="10" width="180" height="180" rx="8"/>
+  <text x="100" y="100" text-anchor="middle" font-size="16" fill="#fff" font-family="Arial, sans-serif">Dang tao QR...</text>
+</svg>`;
+const LOADING_QR = "data:image/svg+xml," + encodeURIComponent(LOADING_QR_SVG.trim());
+
+/** Success checkmark after payment confirmed */
+const SUCCESS_QR_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <rect fill="#fff" width="200" height="200" rx="10"/>
+  <rect fill="#28a745" x="10" y="10" width="180" height="180" rx="8"/>
+  <text x="100" y="90" text-anchor="middle" font-size="48" fill="#fff" font-family="Arial">✓</text>
+  <text x="100" y="130" text-anchor="middle" font-size="16" fill="#fff" font-family="Arial">Thanh cong!</text>
+</svg>`;
+const SUCCESS_QR = "data:image/svg+xml," + encodeURIComponent(SUCCESS_QR_SVG.trim());
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Generate QR code image URL using quickchart.io API
+ * @param {string} data - The data to encode in QR (MoMo deeplink URL)
+ * @returns {string} URL to QR code image
+ */
+function generateQRCodeUrl(data) {
+    return `https://quickchart.io/qr?text=${encodeURIComponent(data)}&size=200`;
+}
+
+// ============================================================================
+// Payment Terminal Class
+// ============================================================================
+
+/**
+ * MoMo Payment Terminal
+ * Extends Odoo's PaymentInterface in wait for webhook confirmation
+ */
+export class TrcfMomoPaymentTerminal extends PaymentInterface {
+
+    /** Disable fast payments - we wait for webhook confirmation */
+    get fastPayments() {
+        return false;
+    }
+
+    /**
+     * Called when user clicks "Send" on payment line
+     * Sets status to 'waiting' until webhook confirms payment
+     */
+    async sendPaymentRequest(uuid) {
+        await super.sendPaymentRequest(uuid);
+        if (!this.pos) return false;
+
+        const line = this.pos.getOrder()?.getSelectedPaymentline();
+        if (!line) return false;
+
+        line.setPaymentStatus('waiting');
+        return true;
+    }
+
+    sendPaymentCancel(order, uuid) {
+        super.sendPaymentCancel(order, uuid);
+        return Promise.resolve(true);
+    }
+
+    sendPaymentReversal(uuid) {
+        super.sendPaymentReversal(uuid);
+        return Promise.resolve(true);
+    }
+}
+
+// Register terminal with Odoo POS
+register_payment_method("trcf_momo", TrcfMomoPaymentTerminal);
+
+// ============================================================================
+// PaymentScreen Patch
+// ============================================================================
+
+/**
+ * Extends PaymentScreen to:
+ * 1. Display MoMo QR code when payment method selected
+ * 2. Listen for webhook notifications via Odoo bus
+ * 3. Auto-validate order on successful payment
+ */
+patch(PaymentScreen.prototype, {
+
+    setup() {
+        super.setup(...arguments);
+
+        // Reactive state for QR display
+        this.momoState = useState({
+            showQr: false,
+            qrCode: DEFAULT_MOMO_QR,
+            loading: false,
+            pendingOrderId: null,
+            momoOrderId: null,  // Store MoMo order ID for polling
+            pollingInterval: null,  // Polling timer
+        });
+
+        // Subscribe to webhook notifications
+        this._setupMomoPaymentListener();
+
+        onWillUnmount(() => {
+            this._cleanupMomoPaymentListener();
+        });
+    },
+
+    /**
+     * Subscribe to Odoo bus for MoMo payment success notifications
+     * Uses Odoo 19 pattern: getOnNotified with config.access_token channel
+     */
+    _setupMomoPaymentListener() {
+        const busService = this.env.services.bus_service;
+        const accessToken = this.pos.config?.access_token;
+
+        if (busService && accessToken) {
+            const onNotified = getOnNotified(busService, accessToken);
+            this._momoUnsubscribe = onNotified('MOMO_PAYMENT_SUCCESS', (payload) => {
+                this._handleMomoPaymentSuccess(payload);
+            });
+        }
+    },
+
+    _cleanupMomoPaymentListener() {
+        // Stop polling if active
+        this._stopMomoPolling();
+    },
+
+    /**
+     * Start polling MoMo payment status
+     * Checks every 3 seconds for payment confirmation
+     * Stops after 5 minutes or when payment is confirmed
+     */
+    _startMomoPolling(momoOrderId) {
+        // Stop any existing polling
+        this._stopMomoPolling();
+
+        let pollCount = 0;
+        const maxPolls = 100; // 100 * 3s = 5 minutes max
+
+        this.momoState.pollingInterval = setInterval(async () => {
+            pollCount++;
+
+            // Stop after max attempts
+            if (pollCount >= maxPolls) {
+                this._stopMomoPolling();
+                return;
+            }
+
+            try {
+                const result = await this.pos.data.call(
+                    "pos.payment.method",
+                    "check_momo_payment_status_rpc",
+                    [],
+                    { momo_order_id: momoOrderId }
+                );
+
+                if (result && result.status === 'success') {
+                    // Payment confirmed!
+                    this._stopMomoPolling();
+                    // The notification will be sent via bus, but we can also handle it here
+                    this._handleMomoPaymentSuccess({
+                        pos_order_ref: this.momoState.pendingOrderId,
+                        momo_order_id: momoOrderId,
+                        amount: 0,
+                        trans_id: result.trans_id || ''
+                    });
+                } else if (result && result.status === 'failed') {
+                    // Payment failed
+                    this._stopMomoPolling();
+                }
+                // If pending, continue polling
+            } catch (error) {
+                console.error('MoMo polling error:', error);
+            }
+        }, 3000); // Poll every 3 seconds
+    },
+
+    /**
+     * Stop polling MoMo payment status
+     */
+    _stopMomoPolling() {
+        if (this.momoState.pollingInterval) {
+            clearInterval(this.momoState.pollingInterval);
+            this.momoState.pollingInterval = null;
+        }
+    },
+
+    /**
+     * Handle successful payment notification from webhook
+     * - Validates notification matches current pending order
+     * - Marks payment line as done
+     * - Shows success QR
+     * - Auto-validates order
+     * 
+     * @param {Object} data - Payment data from webhook
+     * @param {string} data.pos_order_ref - POS order reference
+     * @param {string} data.momo_order_id - MoMo transaction ID
+     * @param {number} data.amount - Payment amount
+     */
+    _handleMomoPaymentSuccess(data) {
+        // Guard: ensure we have an active order with payment lines
+        if (!this.currentOrder || !this.currentOrder.payment_ids) {
+            return;
+        }
+
+        // Guard: ensure order is still in draft state (not already validated)
+        if (this.currentOrder.state !== 'draft') {
+            return;
+        }
+
+        // Guard: ensure notification matches current pending order
+        // Compare pos_order_ref from webhook with our pendingOrderId
+        if (this.momoState.pendingOrderId && data.pos_order_ref) {
+            const pendingId = String(this.momoState.pendingOrderId);
+            const notificationId = String(data.pos_order_ref);
+            if (!pendingId.includes(notificationId) && !notificationId.includes(pendingId)) {
+                // Notification is for a different order, ignore
+                return;
+            }
+        }
+
+        // Find MoMo payment line that is not yet done
+        const momoLine = this.paymentLines.find(
+            line => line.payment_method_id?.use_payment_terminal === 'trcf_momo'
+                && ['waiting', 'pending', 'retry'].includes(line.getPaymentStatus())
+        );
+
+        if (momoLine) {
+            // Mark payment as completed
+            momoLine.setPaymentStatus('done');
+
+            // Update QR to show success
+            this.momoState.qrCode = SUCCESS_QR;
+
+            // Clear pending order ID to prevent duplicate processing
+            this.momoState.pendingOrderId = null;
+
+            // Auto-validate order (triggers receipt printing via trcf_printer_manager)
+            setTimeout(() => {
+                try {
+                    const currentOrder = this.currentOrder;
+                    if (currentOrder && currentOrder.state === 'draft' && currentOrder.isPaid() && !currentOrder.isRefundInProcess()) {
+                        this.validateOrder(false);
+                    }
+                } catch (e) {
+                    // Validation error - user can manually validate
+                }
+            }, 100);
+        }
+    },
+
+    /**
+     * Override to handle MoMo payment method selection
+     * Calls MoMo API to create payment and get QR code
+     */
+    async addNewPaymentLine(paymentMethod) {
+        const result = super.addNewPaymentLine(...arguments);
+
+        if (paymentMethod.use_payment_terminal === 'trcf_momo') {
+            this.momoState.showQr = true;
+            this.momoState.loading = true;
+            this.momoState.qrCode = LOADING_QR;
+
+            // Prepare order data for MoMo API
+            const order = this.currentOrder;
+
+            // Guard: ensure order exists
+            if (!order) {
+                console.error('MoMo: No current order found');
+                this.momoState.loading = false;
+                this.momoState.qrCode = DEFAULT_MOMO_QR;
+                return result;
+            }
+
+            let orderId = order.tracking_number || order.sequence_number || order.name;
+            if (!orderId || orderId === '/' || orderId === 'Order') {
+                orderId = (order.uid || order.uuid || '').split('-').pop() || `${Date.now()}`;
+            }
+
+            // Get amount - robust calculation for Odoo 19 reactive proxy system
+            // In Odoo 19, order is a Proxy object and methods may not appear in Object.keys()
+            // We need to call methods directly with try-catch as they may fail if data not loaded
+            let amount = 0;
+            try {
+                // Method 1: Use getTotalDue() - this depends on taxTotals being computed
+                if (order.getTotalDue) {
+                    const totalDue = order.getTotalDue();
+                    if (totalDue && !isNaN(totalDue)) {
+                        amount = Math.round(totalDue);
+                    }
+                }
+            } catch (e) {
+                // getTotalDue failed, try other methods
+            }
+
+            if (!amount || amount <= 0) {
+                try {
+                    // Method 2: Direct access to taxTotals (Odoo 19 standard way)
+                    if (order.taxTotals && order.taxTotals.order_total) {
+                        const sign = order.taxTotals.order_sign || 1;
+                        amount = Math.round(sign * order.taxTotals.order_total);
+                    }
+                } catch (e) {
+                    // taxTotals access failed
+                }
+            }
+
+            if (!amount || amount <= 0) {
+                try {
+                    // Method 3: Use amount_total property
+                    if (order.amount_total && !isNaN(order.amount_total)) {
+                        amount = Math.round(order.amount_total);
+                    }
+                } catch (e) {
+                    // amount_total access failed
+                }
+            }
+
+            if (!amount || amount <= 0) {
+                try {
+                    // Method 4: Calculate from order lines (most reliable fallback)
+                    // This works even when reactive state hasn't fully loaded
+                    const lines = order.lines || order.orderlines || [];
+                    if (lines && lines.length > 0) {
+                        let lineTotal = 0;
+                        for (const line of lines) {
+                            try {
+                                // Try getPriceWithTax() method first
+                                if (line.getPriceWithTax) {
+                                    lineTotal += line.getPriceWithTax();
+                                } else if (line.price_subtotal_incl !== undefined) {
+                                    lineTotal += line.price_subtotal_incl;
+                                } else if (line.price_unit !== undefined && line.qty !== undefined) {
+                                    // Fallback: calculate manually
+                                    lineTotal += (line.price_unit || 0) * (line.qty || 1);
+                                }
+                            } catch (lineError) {
+                                // Skip problematic line
+                            }
+                        }
+                        if (lineTotal > 0) {
+                            amount = Math.round(lineTotal);
+                        }
+                    }
+                } catch (e) {
+                    console.error('MoMo: Error calculating from lines:', e);
+                }
+            }
+
+            console.log('MoMo: Calculated payment amount:', amount);
+
+            if (!amount || amount <= 0) {
+                console.error('MoMo: Invalid amount:', amount, '- Order:', order);
+                this.momoState.loading = false;
+                this.momoState.qrCode = DEFAULT_MOMO_QR;
+                return result;
+            }
+            const orderInfo = `CFT${orderId}`;
+            this.momoState.pendingOrderId = orderId;
+
+            try {
+                // Call backend RPC to create MoMo payment
+                const response = await this.pos.data.call(
+                    "pos.payment.method",
+                    "create_momo_payment_rpc",
+                    [],
+                    {
+                        order_id: orderId,
+                        amount: amount,
+                        order_info: orderInfo,
+                        session_id: this.pos.session?.id,
+                        config_id: this.pos.config?.id
+                    }
+                );
+
+                if (response && response.success) {
+                    // Store MoMo order ID for polling
+                    this.momoState.momoOrderId = response.momo_order_id;
+
+                    // Start polling for payment status (fallback if IPN doesn't work)
+                    this._startMomoPolling(response.momo_order_id);
+
+                    // MoMo có thể trả về qr_code_url, pay_url, hoặc deeplink
+                    // Ưu tiên: qr_code_url > pay_url > deeplink
+                    //const qrData = response.qr_code_url || response.pay_url || response.deeplink;
+                    const qrData = response.qr_code_url
+                    if (qrData) {
+                        this.momoState.qrCode = generateQRCodeUrl(qrData);
+                    } else {
+                        // Fallback to static QR
+                        this.momoState.qrCode = paymentMethod.momo_qr_code
+                            ? `data:image/png;base64,${paymentMethod.momo_qr_code}`
+                            : DEFAULT_MOMO_QR;
+                    }
+                } else {
+                    // API failed - Fallback to static QR if available
+                    console.warn('MoMo API failed:', response?.message);
+                    this.momoState.qrCode = paymentMethod.momo_qr_code
+                        ? `data:image/png;base64,${paymentMethod.momo_qr_code}`
+                        : DEFAULT_MOMO_QR;
+                }
+            } catch (error) {
+                // API error - use fallback QR
+                this.momoState.qrCode = paymentMethod.momo_qr_code
+                    ? `data:image/png;base64,${paymentMethod.momo_qr_code}`
+                    : DEFAULT_MOMO_QR;
+            } finally {
+                this.momoState.loading = false;
+            }
+        } else {
+            this.momoState.showQr = false;
+        }
+
+        return result;
+    },
+
+    /**
+     * Override to hide QR when MoMo payment line is deleted
+     */
+    deletePaymentLine(uuid) {
+        const line = this.paymentLines.find((l) => l.uuid === uuid);
+        if (line?.payment_method_id?.use_payment_terminal === 'trcf_momo') {
+            this._stopMomoPolling();
+            this.momoState.showQr = false;
+            this.momoState.qrCode = DEFAULT_MOMO_QR;
+            this.momoState.pendingOrderId = null;
+            this.momoState.momoOrderId = null;
+        }
+        return super.deletePaymentLine(...arguments);
+    },
+
+    // ========================================================================
+    // Template Getters - Used by momo_payment_screen.xml template
+    // ========================================================================
+
+    /** Current QR code to display */
+    get momoQrCode() {
+        return this.momoState.qrCode;
+    },
+
+    /** Whether to show QR code section */
+    get showMomoQr() {
+        return this.paymentLines.some(
+            line => line.payment_method_id?.use_payment_terminal === 'trcf_momo'
+        );
+    },
+
+    /** Whether QR is loading */
+    get momoLoading() {
+        return this.momoState.loading;
+    }
+});

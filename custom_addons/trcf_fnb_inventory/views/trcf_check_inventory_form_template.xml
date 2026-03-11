@@ -1,0 +1,430 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="check_inventory_form_template">
+        
+        <xpath expr="//head" position="inside">
+            <meta charset="utf-8"/>
+            <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+            <title>Tạo Phiếu Kiểm Kho</title>
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+            <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+            <script>
+                tailwind.config = {
+                    darkMode: "class",
+                    theme: {
+                        extend: {
+                            colors: {
+                                primary: '#2563eb',
+                                'primary-light': '#eff6ff',
+                                'primary-dark': '#1e40af',
+                                'background-light': '#f8fafc',
+                                'background-dark': '#020617',
+                                'text-light-primary': '#1e293b',
+                                'text-light-secondary': '#64748b',
+                                'text-dark-primary': '#f8fafc',
+                                'text-dark-secondary': '#94a3b8',
+                                'border-light': '#e2e8f0',
+                                'border-dark': '#1e293b',
+                            },
+                            fontFamily: {
+                                "display": ["Inter", "sans-serif"]
+                            },
+                            borderRadius: {
+                                "DEFAULT": "0.5rem",
+                                "lg": "0.75rem",
+                                "xl": "1rem",
+                                "full": "9999px"
+                            },
+                        },
+                    },
+                }
+            </script>
+            <style>
+                body {
+                    font-family: 'Inter', sans-serif;
+                }
+                .material-symbols-outlined {
+                    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+                }
+                .difference-positive {
+                    color: #10b981;
+                    font-weight: 600;
+                }
+                .difference-negative {
+                    color: #ef4444;
+                    font-weight: 600;
+                }
+            </style>
+        </xpath>
+
+        <xpath expr="//body" position="replace">
+            <body class="font-display bg-background-light dark:bg-background-dark">
+                <div class="flex min-h-screen relative overflow-x-hidden">
+                    <!-- Mobile Overlay -->
+                    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden transition-opacity duration-300 opacity-0"></div>
+
+                    <!-- SideNavBar Wrapper -->
+                    <div id="sidebar-wrapper" class="fixed inset-y-0 left-0 z-50 w-72 transform -translate-x-full transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:z-0">
+                        <t t-call="trcf_fnb_inventory.sidebar_layout_template"/>
+                    </div>
+
+                    <!-- Main Content -->
+                    <main class="flex-1 p-4 md:p-8 overflow-auto w-full">
+                        <div class="max-w-screen mx-auto">
+                            <!-- Mobile Header -->
+                            <div class="md:hidden flex items-center justify-between mb-6 bg-white dark:bg-slate-900 p-4 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+                                <button id="mobile-menu-btn" class="p-2 text-text-light-primary dark:text-dark-primary hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                                    <span class="material-symbols-outlined">menu</span>
+                                </button>
+                                <span class="font-bold text-lg dark:text-white">Kiểm Kho</span>
+                                <div class="w-10"></div>
+                            </div>
+                            
+                            <!-- Success Message -->
+                            <t t-if="success">
+                                <div class="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+                                    <p class="text-green-800 dark:text-green-200 text-sm font-medium">
+                                        <span class="material-symbols-outlined inline-block align-middle mr-2">check_circle</span>
+                                        <t t-esc="success"/>
+                                    </p>
+                                </div>
+                            </t>
+
+                            <!-- Error Message -->
+                            <t t-if="error">
+                                <div class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                                    <p class="text-red-800 dark:text-red-200 text-sm font-medium">
+                                        <span class="material-symbols-outlined inline-block align-middle mr-2">error</span>
+                                        <t t-esc="error"/>
+                                    </p>
+                                </div>
+                            </t>
+
+                            <header class="mb-6 text-center md:text-left">
+                                <h1 class="text-text-light-primary dark:text-text-dark-primary text-2xl md:text-4xl font-black leading-tight tracking-[-0.033em]">Tạo Phiếu Kiểm Kho</h1>
+                            </header>
+
+                            <form id="inventoryCheckForm" method="POST" action="/trcf_fnb_inventory/check_inventory_add">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                
+                                <div class="flex flex-col gap-8">
+                                    <!-- Thông tin Phiếu kiểm -->
+                                    <div class="bg-white dark:bg-slate-900 border border-border-light dark:border-border-dark rounded-xl p-6">
+                                        <h2 class="text-text-light-primary dark:text-white text-xl font-bold leading-tight mb-6">Thông tin Phiếu kiểm</h2>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                            
+                                            <!-- Template Selector -->
+                                            <label class="flex flex-col w-full">
+                                                <p class="text-text-light-secondary dark:text-text-dark-secondary text-sm font-medium leading-normal pb-2">Chọn Template <span class="text-red-500">*</span></p>
+                                                <div class="relative">
+                                                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-light-secondary dark:text-text-dark-secondary">inventory_2</span>
+                                                    <select id="templateSelect" name="template_id" required="required"
+                                                            class="form-select pl-12 appearance-none flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-light-primary dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-border-light dark:border-border-dark bg-white dark:bg-slate-900 focus:border-primary dark:focus:border-primary h-12 placeholder:text-text-light-secondary dark:placeholder:text-text-dark-secondary px-3.5 text-sm font-normal leading-normal">
+                                                        <option value="">-- Chọn template --</option>
+                                                        <t t-foreach="templates" t-as="template">
+                                                            <option t-att-value="template['id']" t-att-data-warehouse="template['warehouse_name']">
+                                                                <t t-esc="template['name']"/>
+                                                            </option>
+                                                        </t>
+                                                    </select>
+                                                </div>
+                                            </label>
+
+                                            <!-- Người kiểm (readonly) -->
+                                            <label class="flex flex-col w-full">
+                                                <p class="text-text-light-secondary dark:text-text-dark-secondary text-sm font-medium leading-normal pb-2">Người kiểm</p>
+                                                <div class="relative">
+                                                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-light-secondary dark:text-text-dark-secondary">person</span>
+                                                    <input type="text" readonly="readonly" t-att-value="current_user"
+                                                           class="form-input pl-12 flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-light-primary dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-border-light dark:border-border-dark bg-slate-100 dark:bg-slate-800 h-12 p-[15px] text-sm font-normal leading-normal cursor-not-allowed"/>
+                                                </div>
+                                            </label>
+
+                                            <!-- Kho (auto-fill from template) -->
+                                            <label class="flex flex-col w-full">
+                                                <p class="text-text-light-secondary dark:text-text-dark-secondary text-sm font-medium leading-normal pb-2">Kho</p>
+                                                <div class="relative">
+                                                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-light-secondary dark:text-text-dark-secondary">storefront</span>
+                                                    <input id="locationDisplay" type="text" readonly="readonly" placeholder="Chọn template để xem kho"
+                                                           class="form-input pl-12 flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-light-primary dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-border-light dark:border-border-dark bg-slate-100 dark:bg-slate-800 h-12 p-[15px] text-sm font-normal leading-normal cursor-not-allowed"/>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Chi tiết Sản phẩm -->
+                                    <div id="productsSection" class="bg-white dark:bg-slate-900 border border-border-light dark:border-border-dark rounded-xl p-6" style="display: none;">
+                                        <h2 class="text-text-light-primary dark:text-white text-xl font-bold leading-tight mb-6">Chi tiết Sản phẩm</h2>
+                                        
+                                        <div id="loadingSpinner" class="flex justify-center items-center py-8" style="display: none;">
+                                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                                        </div>
+
+                                        <div id="productsTableContainer" style="display: none;">
+                                            <div class="flow-root">
+                                                <div class="-mx-6 -my-2 overflow-x-auto">
+                                                    <div class="inline-block min-w-full py-2 align-middle sm:px-6">
+                                                        <div class="overflow-hidden">
+                                                            <table class="min-w-full">
+                                                                <thead class="border-b border-border-light dark:border-border-dark">
+                                                                    <tr>
+                                                                        <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary sm:pl-0 w-[20%]" scope="col">Sản phẩm</th>
+                                                                        <th class="px-3 py-3.5 text-left text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary w-[10%]" scope="col">Đơn vị</th>
+                                                                        <th class="px-3 py-3.5 text-left text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary w-[15%]" scope="col">Hệ thống</th>
+                                                                        <th class="px-3 py-3.5 text-left text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary w-[10%]" scope="col">Tối thiểu</th>
+                                                                        <th class="px-3 py-3.5 text-left text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary w-[10%]" scope="col">Tối đa</th>
+                                                                        <th class="px-3 py-3.5 text-left text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary w-[10%]" scope="col">Thực tế</th>
+                                                                        <th class="px-3 py-3.5 text-left text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary w-[10%]" scope="col">Chênh lệch</th>
+                                                                        <th class="px-3 py-3.5 text-left text-sm font-semibold text-text-light-secondary dark:text-text-dark-secondary w-[15%]" scope="col">Cần đặt</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody id="productsTableBody" class="text-text-light-primary dark:text-white">
+                                                                    <!-- Rows will be inserted here by JavaScript -->
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Submit Buttons -->
+                                    <div id="submitButtons" class="flex items-center gap-3 justify-end" style="display: none;">
+                                        <button type="button" onclick="window.location.href='/trcf_fnb_inventory/check_inventory_list'"
+                                                class="px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark text-text-light-primary dark:text-white text-sm font-medium leading-normal hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
+                                            Hủy
+                                        </button>
+                                        <button type="submit" id="submitBtn"
+                                                class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark dark:bg-primary dark:hover:bg-blue-700 text-white text-sm font-bold leading-normal transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                            Hoàn tất
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </main>
+                </div>
+
+                <!-- JavaScript -->
+                <script type="text/javascript">
+                //<![CDATA[
+                    $(document).ready(function() {
+                        // Template selection handler
+                        $('#templateSelect').on('change', function() {
+                            const templateId = $(this).val();
+                            const warehouseName = $(this).find('option:selected').data('warehouse');
+                            
+                            if (!templateId) {
+                                $('#productsSection').hide();
+                                $('#submitButtons').hide();
+                                $('#locationDisplay').val('');
+                                return;
+                            }
+
+                            // Update warehouse display
+                            $('#locationDisplay').val(warehouseName || '');
+
+                            // Show loading spinner
+                            $('#loadingSpinner').show();
+                            $('#productsTableContainer').hide();
+                            $('#productsSection').show();
+
+                            // AJAX call to get products
+                            $.ajax({
+                                url: '/trcf_fnb_inventory/get_template_products',
+                                type: 'POST',
+                                contentType: 'application/json',
+                                data: JSON.stringify({
+                                    jsonrpc: '2.0',
+                                    method: 'call',
+                                    params: {
+                                        template_id: parseInt(templateId)
+                                    }
+                                }),
+                                success: function(response) {
+                                    $('#loadingSpinner').hide();
+                                    
+                                    if (response.error) {
+                                        alert('Lỗi: ' + (response.error.data?.message || response.error.message || 'Không thể tải sản phẩm'));
+                                        return;
+                                    }
+
+                                    const result = response.result;
+                                    if (result.error) {
+                                        alert('Lỗi: ' + result.error);
+                                        return;
+                                    }
+
+                                    // Render products table
+                                    renderProductsTable(result.products);
+                                    $('#productsTableContainer').show();
+                                    $('#submitButtons').show();
+                                },
+                                error: function(xhr, status, error) {
+                                    $('#loadingSpinner').hide();
+                                    console.error('AJAX Error:', error);
+                                    alert('Lỗi kết nối: ' + error);
+                                }
+                            });
+                        });
+
+                        function renderProductsTable(products) {
+                            const tbody = $('#productsTableBody');
+                            tbody.empty();
+
+                            if (!products || products.length === 0) {
+                                tbody.append(`
+                                    <tr>
+                                        <td colspan="5" class="text-center py-8 text-gray-500">
+                                            Không có sản phẩm nào trong template này
+                                        </td>
+                                    </tr>
+                                `);
+                                return;
+                            }
+
+                            products.forEach(function(product) {
+                                // Fallback for transition period (when server not yet restarted)
+                                const sysQtyTarget = typeof product.system_qty_target !== 'undefined' ? product.system_qty_target : (product.system_qty || 0);
+                                const sysQtyBase = typeof product.system_qty_base !== 'undefined' ? product.system_qty_base : sysQtyTarget;
+                                const minQtyBase = typeof product.min_qty_base !== 'undefined' ? product.min_qty_base : null;
+                                const maxQtyBase = typeof product.max_qty_base !== 'undefined' ? product.max_qty_base : null;
+
+                                // Determine color for system_qty using BASE units
+                                let systemQtyColorClass = '';
+                                if (minQtyBase != null && maxQtyBase != null) {
+                                    if (sysQtyBase < minQtyBase) {
+                                        systemQtyColorClass = 'text-red-600 font-bold';
+                                    } else if (sysQtyBase <= maxQtyBase) {
+                                        systemQtyColorClass = 'text-emerald-600 font-bold';
+                                    } else {
+                                        systemQtyColorClass = 'text-blue-600 font-bold';
+                                    }
+                                }
+
+                                const row = $(
+                                    '<tr class="border-b border-border-light dark:border-border-dark">' +
+                                        '<td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium sm:pl-0">' +
+                                            escapeHtml(product.product_name) +
+                                        '</td>' +
+                                        '<td class="whitespace-nowrap px-3 py-4 text-sm">' +
+                                            escapeHtml(product.uom_name) +
+                                        '</td>' +
+                                        '<td class="px-3 py-4 text-xs ' + systemQtyColorClass + '">' +
+                                            (product.system_display || sysQtyTarget.toFixed(2)) +
+                                        '</td>' +
+                                        '<td class="px-3 py-4 text-xs text-text-light-secondary dark:text-text-dark-secondary">' +
+                                            (product.min_display || '-') +
+                                        '</td>' +
+                                        '<td class="px-3 py-4 text-xs text-text-light-secondary dark:text-text-dark-secondary">' +
+                                            (product.max_display || '-') +
+                                        '</td>' +
+                                        '<td class="whitespace-nowrap px-3 py-4 text-sm">' +
+                                            '<input type="number" ' +
+                                                   'name="actual_qty_' + product.product_id + '" ' +
+                                                   'data-product-id="' + product.product_id + '" ' +
+                                                   'data-system-qty="' + sysQtyTarget + '" ' +
+                                                   'step="0.01" ' +
+                                                   'min="0" ' +
+                                                   'value="' + sysQtyTarget.toFixed(2) + '" ' +
+                                                   'class="actual-qty-input form-input w-24 rounded-lg text-text-light-primary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border-border-light dark:border-border-dark bg-white dark:bg-slate-900 focus:border-primary dark:focus:border-primary text-sm p-2" />' +
+                                            '<input type="hidden" name="system_qty_' + product.product_id + '" value="' + sysQtyTarget + '" />' +
+                                            '<input type="hidden" name="uom_id_' + product.product_id + '" value="' + product.uom_id + '" />' +
+                                        '</td>' +
+                                        '<td class="whitespace-nowrap px-3 py-4 text-sm font-medium difference-cell">' +
+                                            '0.00' +
+                                        '</td>' +
+                                        '<td class="px-3 py-4 text-sm font-bold text-primary dark:text-blue-400">' +
+                                            (product.to_order_display || '-') +
+                                        '</td>' +
+                                    '</tr>'
+                                );
+                                tbody.append(row);
+                            });
+
+                            // Attach input event handlers
+                            $('.actual-qty-input').on('input', function() {
+                                calculateDifference($(this));
+                            });
+                        }
+
+                        function calculateDifference($input) {
+                            const systemQty = parseFloat($input.data('system-qty')) || 0;
+                            const actualQty = parseFloat($input.val()) || 0;
+                            const difference = actualQty - systemQty;
+                            
+                            const $diffCell = $input.closest('tr').find('.difference-cell');
+                            $diffCell.text(difference.toFixed(2));
+                            
+                            // Apply color classes
+                            $diffCell.removeClass('difference-positive difference-negative');
+                            if (difference > 0) {
+                                $diffCell.addClass('difference-positive');
+                            } else if (difference < 0) {
+                                $diffCell.addClass('difference-negative');
+                            }
+                        }
+
+                        function escapeHtml(text) {
+                            const map = {
+                                '&': '&amp;',
+                                '<': '&lt;',
+                                '>': '&gt;',
+                                '"': '&quot;',
+                                "'": '&#039;'
+                            };
+                            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+                        }
+
+                         // Mobile Menu Logic
+                        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+                        const sidebarWrapper = document.getElementById('sidebar-wrapper');
+                        const mobileOverlay = document.getElementById('mobile-overlay');
+
+                        function toggleMobileMenu() {
+                            if (!sidebarWrapper) return;
+                            const isOpen = !sidebarWrapper.classList.contains('-translate-x-full');
+                            if (isOpen) {
+                                sidebarWrapper.classList.add('-translate-x-full');
+                                mobileOverlay.classList.add('hidden');
+                                mobileOverlay.classList.remove('opacity-100');
+                                document.body.style.overflow = '';
+                            } else {
+                                sidebarWrapper.classList.remove('-translate-x-full');
+                                mobileOverlay.classList.remove('hidden');
+                                setTimeout(() => mobileOverlay.classList.add('opacity-100'), 0);
+                                document.body.style.overflow = 'hidden';
+                            }
+                        }
+
+                        if (mobileMenuBtn) {
+                            mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+                        }
+                        if (mobileOverlay) {
+                            mobileOverlay.addEventListener('click', toggleMobileMenu);
+                        }
+
+                        // Form validation before submit
+                        $('#inventoryCheckForm').on('submit', function(e) {
+                            const templateId = $('#templateSelect').val();
+                            if (!templateId) {
+                                e.preventDefault();
+                                alert('Vui lòng chọn template');
+                                return false;
+                            }
+
+                            // Disable submit button to prevent double submission
+                            $('#submitBtn').prop('disabled', true).text('Đang xử lý...');
+                            return true;
+                        });
+                    });
+                //]]>
+                </script>
+            </body>
+        </xpath>
+
+    </template>
+</odoo>

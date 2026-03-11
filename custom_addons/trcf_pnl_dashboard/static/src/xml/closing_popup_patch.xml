@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- Extend POS Closing Popup to add owner withdrawal fields -->
+    <t t-name="trcf_pnl_dashboard.ClosePosPopup" t-inherit="point_of_sale.ClosePosPopup" t-inherit-mode="extension">
+        
+        <!-- Add CSS to hide default input fields -->
+        <xpath expr="//hr" position="after">
+            <style>
+                /* Hide all mb-3 divs that come right after hr (these are the input fields) */
+                .close-pos-popup hr + div.mb-3,
+                .close-pos-popup hr ~ div.mb-3,
+                .close-pos-popup hr ~ div.w-100.mb-3 {
+                    display: none !important;
+                }
+                
+                /* But keep notes-container visible */
+                .close-pos-popup .notes-container {
+                    display: flex !important;
+                }
+                
+                /* Keep our custom trcf fields visible */
+                .close-pos-popup .trcf-payment-summary,
+                .close-pos-popup .trcf-cash-management {
+                    display: block !important;
+                }
+            </style>
+        </xpath>
+        
+        <!-- Replace non-cash payment inputs with empty div to completely remove them -->
+        <xpath expr="//div[@t-foreach='props.non_cash_payment_methods']" position="replace">
+            <!-- Removed: using custom payment inputs in trcf-payment-summary -->
+        </xpath>
+
+        <!-- Replace payment-methods-overview with custom summary -->
+        <xpath expr="//div[@class='payment-methods-overview']" position="replace">
+            <!-- Keep the div to maintain compatibility with other templates -->
+            <div class="payment-methods-overview" style="display: none;"></div>
+            <div class="trcf-payment-summary mt-3 mb-3 p-3 border rounded bg-light">
+                <h5 class="mb-3">Tổng Kết Thanh Toán</h5>
+                
+                <!-- Loop through all payment methods -->
+                <t t-foreach="getAllPaymentMethods()" t-as="pm" t-key="pm.id">
+                    <table class="table table-sm table-borderless mb-3">
+                        <thead>
+                            <tr class="border-bottom">
+                                <th class="fw-bold">
+                                    <t t-esc="pm.name"/>
+                                </th>
+                                <th class="fw-bold text-end">
+                                    <t t-esc="env.utils.formatCurrency(pm.opening + pm.income - pm.expenses)"/>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Opening balance (only show if > 0 and is Cash) -->
+                            <tr t-if="pm.isCash &amp;&amp; pm.opening > 0">
+                                <td class="ps-3">Mở ca</td>
+                                <td class="text-end">
+                                    <t t-esc="env.utils.formatCurrency(pm.opening)"/>
+                                </td>
+                            </tr>
+
+                            <!-- Income -->
+                            <tr>
+                                <td class="ps-3">Thanh toán</td>
+                                <td class="text-end fw-bold text-success">
+                                    <t t-esc="env.utils.formatCurrency(pm.income)"/>
+                                </td>
+                            </tr>
+
+                            <t t-if="pm.isCash">
+                                <!-- Expenses with expand/collapse -->
+                                <tr class="trcf_expandable_row" t-on-click="() => this.togglePMExpenses(pm.id)">
+                                    <td class="ps-3">
+                                        <i t-attf-class="fa fa-chevron-{{isPMExpensesExpanded(pm.id) ? 'down' : 'right'}} me-2"/>
+                                        Chi
+                                    </td>
+                                    <td class="text-end fw-bold text-danger">
+                                        <t t-esc="env.utils.formatCurrency(pm.expenses)"/>
+                                    </td>
+                                </tr>
+
+                                <!-- Expense details (expandable) -->
+                                <t t-if="isPMExpensesExpanded(pm.id)">
+                                    <tr t-foreach="pm.expenseDetails" t-as="expense" t-key="expense.id" class="trcf-expense-detail">
+                                        <td class="ps-5 text-muted">
+                                            <small t-esc="expense.name"/>
+                                        </td>
+                                        <td class="text-end text-muted">
+                                            <small t-esc="env.utils.formatCurrency(expense.trcf_amount)"/>
+                                        </td>
+                                    </tr>
+                                    <tr t-if="pm.expenseDetails.length === 0" class="trcf-expense-detail">
+                                        <td colspan="2" class="ps-5 text-muted">
+                                            <small><em>Không có chi phí</em></small>
+                                        </td>
+                                    </tr>
+                                </t>
+
+                                <!-- Purchases with expand/collapse -->
+                                <tr class="trcf_expandable_row" t-on-click="() => this.togglePMPurchases(pm.id)">
+                                    <td class="ps-3">
+                                        <i t-attf-class="fa fa-chevron-{{isPMPurchasesExpanded(pm.id) ? 'down' : 'right'}} me-2"/>
+                                        Mua hàng
+                                    </td>
+                                    <td class="text-end fw-bold text-danger">
+                                        <t t-esc="env.utils.formatCurrency(pm.purchases)"/>
+                                    </td>
+                                </tr>
+
+                                <!-- Purchase details (expandable) -->
+                                <t t-if="isPMPurchasesExpanded(pm.id)">
+                                    <tr t-foreach="pm.purchaseDetails" t-as="purchase" t-key="purchase.id" class="trcf-expense-detail">
+                                        <td class="ps-5 text-muted">
+                                            <small t-esc="purchase.name"/>
+                                        </td>
+                                        <td class="text-end text-muted">
+                                            <small t-esc="env.utils.formatCurrency(purchase.amount_total)"/>
+                                        </td>
+                                    </tr>
+                                    <tr t-if="pm.purchaseDetails.length === 0" class="trcf-expense-detail">
+                                        <td colspan="2" class="ps-5 text-muted">
+                                            <small><em>Không có đơn mua hàng</em></small>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </t>
+
+                            <!-- Counted amount (display only) -->
+                            <tr>
+                                <td class="ps-3">Đếm</td>
+                                <td class="text-end">
+                                    <t t-esc="env.utils.formatCurrency(pm.counted)"/>
+                                </td>
+                            </tr>
+
+                            <!-- Difference -->
+                            <tr>
+                                <td class="ps-3">Chênh lệch</td>
+                                <td t-attf-class="text-end fw-bold {{pm.difference >= 0 ? 'text-success' : 'text-danger'}}">
+                                    <t t-esc="env.utils.formatCurrency(pm.difference)"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Actual counted amount input (outside table) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Số tiền đếm thực tế</label>
+                        <Input 
+                            tModel="[state.trcf_counted_amounts, pm.id]"
+                            callback.bind="(value) => this.onCountedAmountChange(pm.id, value)"
+                            isValid.bind="env.utils.isValidFloat" 
+                            placeholder="'0'"/>
+                    </div>
+                </t>
+            </div>
+        </xpath>
+        
+        <!-- Add fields before footer buttons -->
+        <xpath expr="//div[@class='w-100 d-flex flex-wrap justify-content-between gap-2']" position="before">
+            <div class="trcf-cash-management mb-3">
+                <h5 class="mb-3">Quản lý tiền mặt</h5>
+                
+                <div class="row g-3">
+                    <!-- Số tiền lấy về -->
+                    <div class="col-6">
+                        <label class="form-label fw-bold">Số tiền lấy về</label>
+                        <Input 
+                            tModel="[state, 'trcf_owner_withdrawal']"
+                            callback.bind="(value) => this.onOwnerWithdrawalChange(value)"
+                            isValid.bind="env.utils.isValidFloat" 
+                            placeholder="'0'"/>
+                        <small class="text-muted d-block mt-1">Số tiền owner rút khỏi két</small>
+                    </div>
+                    
+                    <!-- Tiền mặt để lại (tự động tính) -->
+                    <div class="col-6">
+                        <label class="form-label fw-bold">Tiền mặt để lại</label>
+                        <Input 
+                            tModel="[state, 'trcf_next_session_opening']"
+                            isValid.bind="env.utils.isValidFloat" 
+                            placeholder="'0'"
+                            readonly="true"/>
+                        <small class="text-muted d-block mt-1">Tiền đếm - Tiền lấy về</small>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+        
+    </t>
+
+</templates>

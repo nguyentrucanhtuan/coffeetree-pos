@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Kế thừa Form View của POS Order để thêm trường Mã Đối Chiếu -->
+    <record id="view_pos_order_form_inherit_trcf_reference_tax_code" model="ir.ui.view">
+        <field name="name">pos.order.form.inherit.trcf.reference.tax.code</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="trcf_reference_tax_code" readonly="1"/>
+                <field name="trcf_is_vat_sent" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- List View cho Order Pending VAT -->
+    <record id="view_trcf_order_pending_vat_list" model="ir.ui.view">
+        <field name="name">trcf.order.pending.vat.list</field>
+        <field name="model">pos.order</field>
+        <field name="arch" type="xml">
+            <list string="Đơn hàng chưa xuất VAT" decoration-success="trcf_is_vat_sent == True">
+                <header>
+                    <button name="action_send_vat_minvoice_api" 
+                        string="Phát hành hoá đơn" 
+                        type="object" 
+                        class="btn-primary"
+                        help="Gửi nhiều đơn cùng lúc"/>
+                </header>
+                <field name="pos_reference"/>
+                <field name="date_order"/>
+                <field name="partner_id"/>
+                <field name="amount_total" sum="Total"/>
+                <field name="amount_tax" sum="Tax"/>
+                <field name="state"/>
+                <field name="trcf_reference_tax_code"/>
+                <field name="trcf_is_vat_sent" string="Đã xuất VAT"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Action cho Order Pending VAT -->
+    <record id="action_trcf_order_pending_vat" model="ir.actions.act_window">
+        <field name="name">Hoá đơn chờ xuất VAT</field>
+        <field name="res_model">pos.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', 'in', ['paid', 'done'])]</field>
+        <field name="context">{'search_default_filter_today': 1}</field>
+        <field name="search_view_id" ref="view_trcf_order_pending_vat_search"/>
+        <field name="view_id" ref="view_trcf_order_pending_vat_list"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Không có order pending VAT
+            </p>
+            <p>
+                Danh sách các đơn hàng POS chưa có mã đối chiếu VAT
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Root: TRCF VAT (ngang hàng với TRCF Quản lý ca) -->
+    <menuitem id="menu_trcf_vat_root"
+              name="TRCF VAT"
+              sequence="26"/>
+
+    <!-- Submenu: Hoá đơn chờ xuất VAT -->
+    <menuitem id="menu_trcf_order_pending_vat"
+              name="Hoá đơn chờ xuất VAT"
+              parent="menu_trcf_vat_root"
+              action="action_trcf_order_pending_vat"
+              sequence="10"/>
+</odoo>

@@ -1,0 +1,27 @@
+{
+    'name': "TRCF Payment MoMo",
+    'version': '1.3',
+    'category': 'Point of Sale',
+    'summary': "Tích hợp thanh toán MoMo qua QR code cho POS",
+    'author': "Tuấn Rang Cà Phê",
+    'website': "https://coffeetree.vn",
+    'depends': ['point_of_sale', 'bus'],
+    'data': [
+        'security/ir.model.access.csv',
+        'views/trcf_momo_payment_views.xml',
+    ],
+    'assets': {
+        'point_of_sale._assets_pos': [
+            'trcf_payment_momo/static/src/**/*',
+        ],
+    },
+    'license': 'LGPL-3',
+    'installable': True,
+    'application': True,
+    'description': """
+        Module thanh toán MoMo cho hệ thống POS.
+        Khi chọn MoMo, hiển thị mã QR để khách hàng quét thanh toán.
+        Xác nhận thanh toán tự động qua webhook IPN.
+        Tác giả: Tuấn Rang Cà Phê
+    """,
+}

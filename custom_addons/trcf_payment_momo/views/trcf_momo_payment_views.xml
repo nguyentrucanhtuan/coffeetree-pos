@@ -1,0 +1,34 @@
+<odoo>
+    <!-- View mở rộng POS Payment Method - Cấu hình MoMo -->
+    <record id="view_trcf_pos_payment_method_form" model="ir.ui.view">
+        <field name="name">trcf.pos.payment.method.form</field>
+        <field name="model">pos.payment.method</field>
+        <field name="inherit_id" ref="point_of_sale.pos_payment_method_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='use_payment_terminal']" position="after">
+                <group invisible="use_payment_terminal != 'trcf_momo'" string="Cấu hình MoMo API">
+                    <field name="momo_test_mode"/>
+                    <field name="momo_partner_code" required="use_payment_terminal == 'trcf_momo'" 
+                           placeholder="Nhập Partner Code từ MoMo M4B"/>
+                    <field name="momo_access_key" required="use_payment_terminal == 'trcf_momo'" 
+                           placeholder="Nhập Access Key từ MoMo M4B"/>
+                    <field name="momo_secret_key" password="True" required="use_payment_terminal == 'trcf_momo'" 
+                           placeholder="Nhập Secret Key từ MoMo M4B"/>
+                    <separator string="QR Tĩnh (Dự phòng)"/>
+                    <field name="momo_qr_code" widget="image" 
+                           class="oe_avatar"
+                           options='{"size": [200, 200]}'/>
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Lưu ý QUAN TRỌNG:</strong> 
+                        <ul>
+                            <li><b>Partner Code, Access Key, Secret Key</b> là bắt buộc. Lấy từ tài khoản MoMo Business (M4B).</li>
+                            <li>Bật <b>"Chế độ Test"</b> để thử nghiệm với sandbox của MoMo trước khi đưa vào production.</li>
+                            <li>QR tĩnh sẽ được dùng làm backup khi không thể gọi API MoMo.</li>
+                            <li>Kiểm tra <b>web.base.url</b> trong System Parameters để đảm bảo MoMo có thể gọi webhook IPN.</li>
+                        </ul>
+                    </div>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
