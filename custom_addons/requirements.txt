@@ -1,0 +1,7 @@
+# Python dependencies cho custom_addons của CoffeeTree POS
+
+# trcf_printer_manager - in hóa đơn qua mạng (ESC/POS)
+python-escpos>=3.0
+
+# trcf_ai_business_assistant - AI assistant dùng Google ADK
+google-adk
