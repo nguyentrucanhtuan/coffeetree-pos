@@ -4,6 +4,12 @@ set -e
 REPO="https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install"
 DIR="coffeetree-pos"
 
+# ── Cài curl nếu chưa có ────────────────────────────────────────────
+if ! command -v curl &> /dev/null; then
+  echo "📦 Đang cài curl..."
+  sudo apt-get update -qq && sudo apt-get install -y curl
+fi
+
 echo "=========================================="
 echo "  CoffeeTree POS - Linux Docker Engine Installer"
 echo "=========================================="
@@ -33,13 +39,13 @@ curl -fsSL "$REPO/docker-compose.yml" -o docker-compose.yml
 
 # ── Build & chạy ────────────────────────────────────────────────────
 echo "🔨 Build và khởi động (lần đầu ~15 phút)..."
-docker compose up --build -d
+sudo docker compose up --build -d
 
 # ── Chờ Odoo sẵn sàng ──────────────────────────────────────────────
 echo "⏳ Chờ Odoo khởi động..."
 until curl -sf http://localhost:8069/web/health > /dev/null 2>&1; do
   sleep 5
-  echo "   Đang chờ..."
+  echo "   Đang chờ... (có thể mất vài phút)"
 done
 
 # ── Thông báo ──────────────────────────────────────────────────────
