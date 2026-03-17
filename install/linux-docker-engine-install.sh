@@ -37,6 +37,10 @@ mkdir -p "$DIR" && cd "$DIR"
 echo "📥 Đang tải cấu hình..."
 curl -fsSL "$REPO/docker-compose.yml" -o docker-compose.yml
 
+# ── Xóa image cũ để buộc re-clone code mới nhất ────────────────────
+echo "🗑️  Xóa image cũ (nếu có) để lấy code mới nhất từ git..."
+sudo docker rmi coffeetree-pos-web 2>/dev/null || true
+
 # ── Build & chạy ────────────────────────────────────────────────────
 echo "🔨 Build và khởi động (lần đầu ~15 phút)..."
 sudo docker compose up --build -d

@@ -50,7 +50,9 @@ services:
 
         RUN pip install --no-cache-dir --upgrade pip \
             && pip install --no-cache-dir -r /opt/odoo/requirements.txt \
-            && pip install --no-cache-dir -r /opt/odoo/custom_addons/requirements.txt
+            && if [ -f /opt/odoo/custom_addons/requirements.txt ]; then \
+                pip install --no-cache-dir -r /opt/odoo/custom_addons/requirements.txt; \
+               fi
 
         RUN mkdir -p /var/lib/odoo /mnt/custom_addons
 
