@@ -20,6 +20,8 @@ services:
   web:
     build:
       context: .
+      args:
+        BUILDTIME: unknown
       dockerfile_inline: |
         FROM python:3.12-slim
         ENV LANG=C.UTF-8
@@ -44,7 +46,10 @@ services:
 
         RUN npm install -g rtlcss
 
-        # Clone source từ GitHub (dùng đường dẫn mặc định /opt/odoo để tương thích với các bản upgrade)
+        # Cache-busting: thay đổi BUILDTIME để buộc re-clone code mới nhất
+        ARG BUILDTIME=unknown
+
+        # Clone source từ GitHub
         RUN git clone https://github.com/nguyentrucanhtuan/coffeetree-pos.git \
             --branch 19.0 --depth 1 /opt/odoo
 

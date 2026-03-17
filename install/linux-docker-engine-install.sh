@@ -43,7 +43,7 @@ sudo docker rmi coffeetree-pos-web 2>/dev/null || true
 
 # ── Build & chạy ────────────────────────────────────────────────────
 echo "🔨 Build và khởi động (lần đầu ~15 phút)..."
-sudo docker compose up --build -d
+sudo docker compose build --build-arg BUILDTIME="$(date +%s)" && sudo docker compose up -d
 
 # ── Chờ Odoo sẵn sàng ──────────────────────────────────────────────
 echo "⏳ Chờ Odoo khởi động..."
