@@ -4,34 +4,44 @@ Hệ thống Point of Sale tùy chỉnh của coffeetree.vn
 
 ## 🚀 Cài đặt nhanh với Docker
 
-> [!IMPORTANT]
-> Nên sử dụng **Docker Desktop** cho tất cả các hệ điều hành để đảm bảo tính đồng bộ và dễ quản lý. Tuy nhiên, nếu bạn dùng Linux và muốn tối ưu hiệu năng, có thể dùng **Docker Engine**.
+Chọn đúng hệ điều hành của bạn:
 
-### Yêu cầu
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Khuyên dùng)
-- Hoặc Docker Engine (Chỉ dành cho Linux)
+---
 
-### 1 lệnh duy nhất (Linux/Mac)
+### 🐧 Ubuntu / Debian (All-in-one — chưa có gì cả)
+
+> Lệnh này tự động cài **curl → Docker Engine → Docker Compose → CoffeeTree POS** trong một lần duy nhất.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install/docker-compose.yml | docker compose -f - up --build -d
+sudo apt-get update && sudo apt-get install -y curl && curl -fsSL https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install/linux-docker-engine-install.sh | bash
 ```
 
-> Cài đặt lần đầu mất ~15 phút. Sau đó mở **http://localhost:8069** — đăng nhập `admin` / `admin`.
+---
 
-### Hoặc dùng script tự động
+### 🍎 Mac / Linux (đã có Docker Desktop)
 
-**Windows** (Tải và chạy):
-[win-install.bat](https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install/win-install.bat)
-
-**Mac / Linux (Docker Desktop):**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install/linux-mac-install.sh | bash
 ```
 
-**Linux (Chỉ cài Docker Engine):**
-```bash
-curl -fsSL https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install/linux-docker-engine-install.sh | bash
-```
+> Nếu Mac chưa có Docker Desktop, tải tại: [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
 
 ---
+
+### 🪟 Windows
+
+Tải và chạy file sau (tự động cài Docker Desktop nếu chưa có):
+
+👉 [win-install.bat](https://raw.githubusercontent.com/nguyentrucanhtuan/coffeetree-pos/19.0/install/win-install.bat)
+
+---
+
+### ✅ Sau khi cài xong
+
+Mở trình duyệt: **http://localhost:8069**
+
+| Tài khoản | Mật khẩu |
+|-----------|----------|
+| `admin`   | `admin`  |
+
+> ⏱️ Lần đầu cài đặt mất ~15 phút (clone source + build image).
